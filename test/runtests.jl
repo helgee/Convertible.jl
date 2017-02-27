@@ -6,7 +6,7 @@ import Base: convert
 for name in 'A':'F'
     sym = Symbol(name)
     @eval begin
-        @convertible struct $sym
+        @convertible type $sym
             val::Int
         end
     end

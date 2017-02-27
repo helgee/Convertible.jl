@@ -71,8 +71,8 @@ end
 @convertible const ParamInt = Param{Int}
 @convertible const ParamUInt8 = Param{UInt8}
 
-convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
-convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
+Base.convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
+Base.convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 ```
 
 [travis-badge]: https://travis-ci.org/helgee/Convertible.jl.svg?branch=master

@@ -20,10 +20,10 @@ convert(::Type{F}, e::E) = F(e.val+1)
 
 @testset "Convertible" begin
     g = Convertible.graph()
-    @test g[A] == [B, D]
-    @test g[B] == [C]
+    @test g[A] == Set([B, D])
+    @test g[B] == Set([C])
     @test isempty(g[D])
-    @test g[E] == [F]
+    @test g[E] == Set([F])
 
     # Node without outbound edges
     @test_throws ErrorException Convertible.findpath(D, B)

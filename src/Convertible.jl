@@ -29,7 +29,7 @@ convert{T}(::Type{T}, obj, ::Type{Val{true}}, ::Type{Val{true}}) = _convert(T, o
 convert{T,S}(::Type{T}, obj::S) = convert(T, obj, Val{isconvertible(T)}, Val{isconvertible(S)})
 
 function graph()
-    g = Dict{DataType,Array{DataType}}(t => DataType[] for t in nodes)
+    g = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
     for (ti, tj) in product(nodes, nodes)
         ti == tj && continue
 

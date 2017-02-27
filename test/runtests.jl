@@ -12,11 +12,23 @@ for name in 'A':'F'
     end
 end
 
+
 convert(::Type{B}, a::A) = B(a.val+1)
 convert(::Type{D}, a::A) = B(a.val+1)
 convert(::Type{C}, b::B) = C(b.val+1)
 convert(::Type{A}, c::C) = A(c.val-2)
 convert(::Type{F}, e::E) = F(e.val+1)
+
+type Param{T}
+    val::T
+end
+
+@convertible const ParamFloat64 = Param{Float64}
+@convertible const ParamInt = Param{Int}
+@convertible const ParamUInt8 = Param{UInt8}
+
+convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
+convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
 @testset "Convertible" begin
     g = Convertible.graph()
@@ -44,4 +56,7 @@ convert(::Type{F}, e::E) = F(e.val+1)
 
     # Check that Base.convert still works.
     @test convert(Int, 4.0) == 4
+
+    p = Param(0.0)
+    @test convert(Param{UInt8}, p).val == UInt8(0)
 end

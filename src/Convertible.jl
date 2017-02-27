@@ -14,13 +14,25 @@ const nodes = Set{DataType}()
 `@convertible <type-def>` adds the `isconvertible` trait to the (struct) type defined in `<type-def>`.
 """
 macro convertible(ex)
-    if typeof(ex) == Expr && typeof(ex) != Symbol && ex.head == :type
-        typ = ex.args[2]
+    wrongex = false
+    if typeof(ex) == Expr && typeof(ex) != Symbol
+        if ex.head == :type
+            typ = ex.args[2]
+            if typeof(typ) == :Symbol
+                error("@convertible cannot be used on parametric types. Used on a concrete alias instead.")
+            end
+        elseif ex.head == :const
+            typ = ex.args[1].args[1]
+        else
+            wrongex = true
+        end
     else
-        error("@convertible must be used on a type definition.")
+        wrongex = true
     end
+    wrongex && error("@convertible must be used on a type definition.")
+
     return quote
-        $ex
+        $(esc(ex))
         Convertible.isconvertible(::Type{$(esc(typ))}) = true
         push!(Convertible.nodes, $(esc(typ)))
         nothing

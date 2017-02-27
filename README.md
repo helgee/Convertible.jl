@@ -41,7 +41,6 @@ end
 ```
 
 Define `Base.convert` methods:
-
 ```julia
 Base.convert(::Type{B}, a::A) = B(a.val+1)
 Base.convert(::Type{D}, a::A) = B(a.val+1)
@@ -49,7 +48,7 @@ Base.convert(::Type{C}, b::B) = C(b.val+1)
 Base.convert(::Type{A}, c::C) = A(c.val-2)
 ```
 
-Type `A` can now be converted to type `C` directly although there is no direct `convert(::Type{C}, ::A)` available.
+Type `A` can now be converted to type `C` directly even though there is no direct `convert(::Type{C}, ::A)` available.
 ```julia
 julia> a = A(1)
 julia> convert(C, a)
@@ -58,6 +57,24 @@ C(3)
 
 Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function, 
 e.g. `convert(C, convert(B, a))` in this case.
+
+### Parametric Types
+
+`@convertible` can only be used on non-parametric types.
+It can be applied to type aliases of parametric types that fix all parameters.
+
+```julia
+type Param{T}
+    val::T
+end
+
+@convertible const ParamFloat64 = Param{Float64}
+@convertible const ParamInt = Param{Int}
+@convertible const ParamUInt8 = Param{UInt8}
+
+convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
+convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
+```
 
 [travis-badge]: https://travis-ci.org/helgee/Convertible.jl.svg?branch=master
 [travis-link]: https://travis-ci.org/helgee/Convertible.jl

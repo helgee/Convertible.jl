@@ -82,18 +82,15 @@ function findpath(origin, target)
     end
     distance[origin] = 0
     queue[origin] = 0
-    visited = DataType[]
     while !isempty(queue)
         node = dequeue!(queue)
-        for n in g[node]
+        node == target && break
+        for neighbor in g[node]
             alt = distance[node] + 1
-            if alt < distance[n]
-                distance[n] = alt
-                prev[n] = Nullable(node)
-                queue[n] = alt
-            end
-            if n == target
-                break
+            if alt < distance[neighbor]
+                distance[neighbor] = alt
+                prev[neighbor] = Nullable(node)
+                queue[neighbor] = alt
             end
         end
     end

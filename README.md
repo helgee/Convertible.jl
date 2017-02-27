@@ -61,13 +61,14 @@ e.g. `convert(C, convert(B, a))` in this case.
 ### Parametric Types
 
 `@convertible` can only be used on non-parametric types.
-It can be applied to type aliases of parametric types that fix all parameters.
+It can be applied to type aliases with parameters, though.
 
 ```julia
 type Param{T}
     val::T
 end
 
+# The pre-v0.6 `typealias` keyword is not supported.
 @convertible const ParamFloat64 = Param{Float64}
 @convertible const ParamInt = Param{Int}
 @convertible const ParamUInt8 = Param{UInt8}

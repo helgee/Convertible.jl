@@ -31,6 +31,10 @@ convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
 convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
 @testset "Convertible" begin
+    @test macroexpand(:(@convertible 1.0)).head == :error
+    @test macroexpand(:(@convertible type Foo{T} end)).head == :error
+    @test macroexpand(:(@convertible f(x) = x)).head == :error
+
     g = Convertible.graph()
     @test g[A] == Set([B, D])
     @test g[B] == Set([C])

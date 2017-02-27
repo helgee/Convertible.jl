@@ -18,8 +18,8 @@ macro convertible(ex)
     if typeof(ex) == Expr && typeof(ex) != Symbol
         if ex.head == :type
             typ = ex.args[2]
-            if typeof(typ) == :Symbol
-                error("@convertible cannot be used on parametric types. Used on a concrete alias instead.")
+            if typeof(typ) == Expr
+                error("@convertible cannot be used on parametric types. Use it on an alias instead without free parameters instead.")
             end
         elseif ex.head == :const
             typ = ex.args[1].args[1]

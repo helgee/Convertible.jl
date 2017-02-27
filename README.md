@@ -12,9 +12,7 @@ Types that share this trait can be easily converted into one another with a sing
 The package can be installed through Julia's package manager:
 
 ```julia
-Pkg.clone("https://github.com/helgee/Convertible.jl.git")
-# As soon as the package has been published in METADATA.jl use:
-# Pkg.add("Convertible")
+Pkg.add("Convertible")
 ```
 
 ## Usage
@@ -61,7 +59,7 @@ e.g. `convert(C, convert(B, a))` in this case.
 ### Parametric Types
 
 `@convertible` can only be used on non-parametric types.
-It can be applied to type aliases with parameters, though.
+It can be applied to type aliases without parameters, though.
 
 ```julia
 type Param{T}

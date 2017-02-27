@@ -1,7 +1,67 @@
 # Convertible
 
-[![Build Status](https://travis-ci.org/helgee/Convertible.jl.svg?branch=master)](https://travis-ci.org/helgee/Convertible.jl)
+*Multi-step convert for Julia types.*
 
-[![Coverage Status](https://coveralls.io/repos/helgee/Convertible.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/helgee/Convertible.jl?branch=master)
+[![Build Status][travis-badge]][travis-link] [![Coverage Status][coveralls-badge]][coveralls-link] [![codecov.io][codecov-badge]][codecov-link]
 
-[![codecov.io](http://codecov.io/github/helgee/Convertible.jl/coverage.svg?branch=master)](http://codecov.io/github/helgee/Convertible.jl?branch=master)
+This package provides the `isconvertible` trait that can be applied to struct type definitions via the `@convertible` macro.
+Types that share this trait can be easily converted into one another with a single call to `Base.convert` even though multiple intermediate conversions might be required.
+
+## Installation
+
+The package can be installed through Julia's package manager:
+
+```julia
+Pkg.clone("https://github.com/helgee/Convertible.jl.git")
+# As soon as the package has been published in METADATA.jl use:
+# Pkg.add("Convertible")
+```
+
+## Usage
+
+Define convertible types:
+```julia
+# For Julia 0.5:
+# @convertible immutable/type A
+@convertible struct A
+    val::Int
+end
+
+@convertible struct B
+    val::Int
+end
+
+@convertible struct C
+    val::Int
+end
+
+@convertible struct D
+    val::Int
+end
+```
+
+Define `Base.convert` methods:
+
+```julia
+Base.convert(::Type{B}, a::A) = B(a.val+1)
+Base.convert(::Type{D}, a::A) = B(a.val+1)
+Base.convert(::Type{C}, b::B) = C(b.val+1)
+Base.convert(::Type{A}, c::C) = A(c.val-2)
+```
+
+Type `A` can now be converted to type `C` directly although there is no direct `convert(::Type{C}, ::A)` available.
+```julia
+julia> a = A(1)
+julia> convert(C, a)
+C(3)
+```
+
+Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function, 
+e.g. `convert(C, convert(B, a))` in this case.
+
+[travis-badge]: https://travis-ci.org/helgee/Convertible.jl.svg?branch=master
+[travis-link]: https://travis-ci.org/helgee/Convertible.jl
+[coveralls-badge]: https://coveralls.io/repos/helgee/Convertible.jl/badge.svg?branch=master&service=github
+[coveralls-link]: https://coveralls.io/github/helgee/Convertible.jl?branch=master
+[codecov-badge]: http://codecov.io/github/helgee/Convertible.jl/coverage.svg?branch=master
+[codecov-link]: http://codecov.io/github/helgee/Convertible.jl?branch=master

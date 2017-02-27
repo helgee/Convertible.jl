@@ -41,5 +41,7 @@ convert(::Type{F}, e::E) = F(e.val+1)
     @test convert(C, a).val ==  3
     @test convert(A, b).val ==  0
     @test convert(D, b).val ==  1
-end
 
+    # Check that Base.convert still works.
+    @test convert(Int, 4.0) == 4
+end

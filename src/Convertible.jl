@@ -8,6 +8,11 @@ export @convertible, isconvertible
 
 const nodes = Set{DataType}()
 
+"""
+    @convertible
+
+`@convertible <type-def>` adds the `isconvertible` trait to the (struct) type defined in `<type-def>`.
+"""
 macro convertible(ex)
     if typeof(ex) == Expr && typeof(ex) != Symbol && ex.head == :type
         typ = ex.args[2]

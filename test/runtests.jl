@@ -29,6 +29,17 @@ end
 convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
 convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
+abstract type Blob end
+
+@convertible struct Foo <: Blob end
+@convertible struct Bar <: Blob end
+@convertible struct FooBar <: Blob end
+
+convert(::Type{Bar}, ::Foo) = Bar()
+convert(::Type{FooBar}, ::Bar) = FooBar()
+
+(::Type{T}){T<:Blob, S<:Blob}(s::S) = @convert convert(T, s)
+
 @testset "Convertible" begin
     @test macroexpand(:(@convertible 1.0)).head == :error
     @test macroexpand(:(@convertible type Foo{T} end)).head == :error
@@ -66,4 +77,7 @@ convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
     p = Param(0.0)
     @test @convert Base.convert(Param{UInt8}, p).val == UInt8(0)
+
+    f = Foo()
+    @test isa(FooBar(f), FooBar)
 end

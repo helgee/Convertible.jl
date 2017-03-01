@@ -19,8 +19,12 @@ macro convertible(ex)
         if ex.head == :type
             typ = ex.args[2]
             if isa(typ, Expr)
-                error("@convertible cannot be used on parametric types. "
-                    * "Use it on an alias without free parameters instead.")
+                if typ.head == :curly
+                    error("@convertible cannot be used on parametric types. "
+                        * "Use it on an alias without free parameters instead.")
+                else
+                    typ = typ.args[1]
+                end
             end
         elseif ex.head == :const
             typ = ex.args[1].args[1]

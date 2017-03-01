@@ -13,11 +13,13 @@ for name in 'A':'F'
 end
 
 
-convert(::Type{B}, a::A) = B(a.val+1)
-convert(::Type{D}, a::A) = B(a.val+1)
-convert(::Type{C}, b::B) = C(b.val+1)
-convert(::Type{A}, c::C) = A(c.val-2)
-convert(::Type{F}, e::E) = F(e.val+1)
+@convert begin
+    convert(::Type{B}, a::A) = B(a.val+1)
+    convert(::Type{D}, a::A) = B(a.val+1)
+    convert(::Type{C}, b::B) = C(b.val+1)
+    convert(::Type{A}, c::C) = A(c.val-2)
+    convert(::Type{F}, e::E) = F(e.val+1)
+end
 
 type Param{T}
     val::T
@@ -27,8 +29,10 @@ end
 @convertible const ParamInt = Param{Int}
 @convertible const ParamUInt8 = Param{UInt8}
 
-convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
-convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
+@convert begin
+    convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
+    convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
+end
 
 @testset "Convertible" begin
     @test macroexpand(:(@convertible 1.0)).head == :error
@@ -53,14 +57,15 @@ convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
     a = A(1)
     b = B(1)
-    @test convert(B, a).val ==  2
-    @test convert(C, a).val ==  3
-    @test convert(A, b).val ==  0
-    @test convert(D, b).val ==  1
-
-    # Check that Base.convert still works.
-    @test convert(Int, 4.0) == 4
+    @convert begin
+        @test convert(B, a).val ==  2
+        @test convert(C, a).val ==  3
+        @test convert(A, b).val ==  0
+        @test convert(D, b).val ==  1
+    end
 
     p = Param(0.0)
-    @test convert(Param{UInt8}, p).val == UInt8(0)
+    @convert begin
+        @test convert(Param{UInt8}, p).val == UInt8(0)
+    end
 end

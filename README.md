@@ -59,10 +59,6 @@ e.g. `convert(C, convert(B, a))` in this case.
 As shown above, you need to opt-in to the new `convert` behaviour by wrapping calls to convert with the `@convert` macro, e.g.:
 
 ```julia
-@convert convert(B, d)
-
-# or
-
 @convert begin
     b = convert(B, a)
     c = convert(C, a)

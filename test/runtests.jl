@@ -1,5 +1,6 @@
 using Convertible
 using Base.Test
+using Compat
 
 import Base: convert
 
@@ -29,7 +30,7 @@ end
 convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
 convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
-abstract type Blob end
+@compat abstract type Blob end
 
 @convertible struct Foo <: Blob end
 @convertible struct Bar <: Blob end

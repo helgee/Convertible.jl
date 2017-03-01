@@ -52,6 +52,10 @@ julia> a = A(1)
 julia> @convert convert(C, a)
 C(3)
 ```
+
+Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function,
+e.g. `convert(C, convert(B, a))` in this case.
+
 As shown above, you need to opt-in to the new `convert` behaviour by wrapping calls to convert with the `@convert` macro, e.g.:
 
 ```julia
@@ -66,9 +70,6 @@ As shown above, you need to opt-in to the new `convert` behaviour by wrapping ca
     d = convert(D, b)
 end
 ```
-
-Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function,
-e.g. `convert(C, convert(B, a))` in this case.
 
 ### Parametric Types
 

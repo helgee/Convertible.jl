@@ -15,10 +15,10 @@ const nodes = Set{DataType}()
 """
 macro convertible(ex)
     wrongex = false
-    if typeof(ex) == Expr && typeof(ex) != Symbol
+    if isa(ex, Expr)
         if ex.head == :type
             typ = ex.args[2]
-            if typeof(typ) == Expr
+            if isa(typ, Expr)
                 error("@convertible cannot be used on parametric types.
                     Use it on an alias without free parameters instead.")
             end
@@ -40,6 +40,11 @@ macro convertible(ex)
     end
 end
 
+"""
+    @convert
+
+`@convert <expr>` enables multi-step conversion for all calls to `convert` in `<expr>`.
+"""
 macro convert(ex)
     recursive_replace!(ex, :(Base.convert), :(Convertible._convert))
     recursive_replace!(ex, :convert, :(Convertible._convert))

@@ -32,9 +32,9 @@ convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
 @compat abstract type Blob end
 
-@convertible struct Foo <: Blob end
-@convertible struct Bar <: Blob end
-@convertible struct FooBar <: Blob end
+@convertible immutable Foo <: Blob end
+@convertible immutable Bar <: Blob end
+@convertible immutable FooBar <: Blob end
 
 convert(::Type{Bar}, ::Foo) = Bar()
 convert(::Type{FooBar}, ::Bar) = FooBar()

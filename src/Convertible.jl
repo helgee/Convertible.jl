@@ -19,7 +19,8 @@ macro convertible(ex)
         if ex.head == :type
             typ = ex.args[2]
             if typeof(typ) == Expr
-                error("@convertible cannot be used on parametric types. Use it on an alias instead without free parameters instead.")
+                error("@convertible cannot be used on parametric types.
+                    Use it on an alias without free parameters instead.")
             end
         elseif ex.head == :const
             typ = ex.args[1].args[1]
@@ -40,18 +41,33 @@ macro convertible(ex)
 end
 
 macro convert(ex)
-    if typeof(ex) != Expr && ex.head != :block
-        error("@convert must be used on a code block, e.g. `@convert begin ... end`.")
-    end
-    for (i, e) in enumerate(ex.args)
-        if typeof(e) == Expr && e.head in (:function, :(=))
-            if e.args[1].args[1] == :convert
-                ex.args[i].args[1].args[1] = :(Convertible._convert)
+    recursive_replace!(ex, :(Base.convert), :(Convertible._convert))
+    recursive_replace!(ex, :convert, :(Convertible._convert))
+    :($(esc(ex)))
+end
+
+function recursive_replace!(ex, old::Expr, new)
+    if isa(ex, Expr) && !isempty(ex.args)
+        for (i, expr) in enumerate(ex.args)
+            if (isa(expr, Expr) && expr.head == :.
+                && Symbol(expr.args) == Symbol(old.args))
+                ex.args[i] = new
+            else
+                recursive_replace!(ex.args[i], old, new)
             end
         end
     end
-    return quote
-        $(esc(ex))
+end
+
+function recursive_replace!(ex, old::Symbol, new)
+    if isa(ex, Expr) && !isempty(ex.args)
+        for (i, expr) in enumerate(ex.args)
+            if isa(expr, Symbol) && expr == old
+                ex.args[i] = new
+            else
+                recursive_replace!(ex.args[i], old, new)
+            end
+        end
     end
 end
 
@@ -66,7 +82,7 @@ function graph()
     for (ti, tj) in product(nodes, nodes)
         ti == tj && continue
 
-        m = methods(_convert, (Type{tj}, ti))
+        m = methods(convert, (Type{tj}, ti))
         # Dirty hack to determine if the method isn't the generic fallback
         if !isempty(m) && m.ms[1].module != Convertible
             push!(g[ti], tj)
@@ -140,7 +156,7 @@ function gen_convert(T, S, obj)
     ex = :(obj)
     path = findpath(S, T)
     for t in path
-        ex = :(Convertible._convert($t, $ex))
+        ex = :(convert($t, $ex))
     end
     return :($ex)
 end

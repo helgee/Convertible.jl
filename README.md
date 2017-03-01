@@ -49,11 +49,25 @@ Base.convert(::Type{A}, c::C) = A(c.val-2)
 Type `A` can now be converted to type `C` directly even though there is no direct `convert(::Type{C}, ::A)` available.
 ```julia
 julia> a = A(1)
-julia> convert(C, a)
+julia> @convert convert(C, a)
 C(3)
 ```
+As shown above, you need to opt-in to the new `convert` behaviour by wrapping calls to convert with the `@convert` macro, e.g.:
 
-Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function, 
+```julia
+@convert convert(B, d)
+
+# or
+
+@convert begin
+    b = convert(B, a)
+    c = convert(C, a)
+    a = convert(A, b)
+    d = convert(D, b)
+end
+```
+
+Internally `Convertible.jl` will compute the shortest conversion path and emit a specialized method based on a generated function,
 e.g. `convert(C, convert(B, a))` in this case.
 
 ### Parametric Types

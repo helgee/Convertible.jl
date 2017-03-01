@@ -12,14 +12,11 @@ for name in 'A':'F'
     end
 end
 
-
-@convert begin
-    convert(::Type{B}, a::A) = B(a.val+1)
-    convert(::Type{D}, a::A) = B(a.val+1)
-    convert(::Type{C}, b::B) = C(b.val+1)
-    convert(::Type{A}, c::C) = A(c.val-2)
-    convert(::Type{F}, e::E) = F(e.val+1)
-end
+convert(::Type{B}, a::A) = B(a.val+1)
+convert(::Type{D}, a::A) = B(a.val+1)
+convert(::Type{C}, b::B) = C(b.val+1)
+convert(::Type{A}, c::C) = A(c.val-2)
+convert(::Type{F}, e::E) = F(e.val+1)
 
 type Param{T}
     val::T
@@ -29,10 +26,8 @@ end
 @convertible const ParamInt = Param{Int}
 @convertible const ParamUInt8 = Param{UInt8}
 
-@convert begin
-    convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
-    convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
-end
+convert(::Type{ParamInt}, p::ParamFloat64) = Param{Int}(p.val)
+convert(::Type{ParamUInt8}, p::ParamInt) = Param{UInt8}(p.val)
 
 @testset "Convertible" begin
     @test macroexpand(:(@convertible 1.0)).head == :error
@@ -64,8 +59,11 @@ end
         @test convert(D, b).val ==  1
     end
 
+    @test_throws MethodError convert(C, a)
+
+    x = @convert convert(C, a)
+    @test x.val == 3
+
     p = Param(0.0)
-    @convert begin
-        @test convert(Param{UInt8}, p).val == UInt8(0)
-    end
+    @test @convert Base.convert(Param{UInt8}, p).val == UInt8(0)
 end

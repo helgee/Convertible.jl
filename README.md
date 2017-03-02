@@ -41,7 +41,7 @@ end
 Define `Base.convert` methods:
 ```julia
 Base.convert(::Type{B}, a::A) = B(a.val+1)
-Base.convert(::Type{D}, a::A) = B(a.val+1)
+Base.convert(::Type{D}, a::A) = D(a.val+1)
 Base.convert(::Type{C}, b::B) = C(b.val+1)
 Base.convert(::Type{A}, c::C) = A(c.val-2)
 ```

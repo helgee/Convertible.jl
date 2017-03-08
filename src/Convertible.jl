@@ -1,6 +1,6 @@
 module Convertible
 
-import Base: convert
+import Base: convert, function_module
 import Iterators: product
 import DataStructures: PriorityQueue, enqueue!, unshift!, dequeue!
 
@@ -14,27 +14,22 @@ const nodes = Set{DataType}()
 `@convertible <type-def>` adds the `isconvertible` trait to the (struct) type defined in `<type-def>`.
 """
 macro convertible(ex)
-    wrongex = false
-    if isa(ex, Expr)
-        if ex.head == :type
-            typ = ex.args[2]
-            if isa(typ, Expr)
-                if typ.head == :curly
-                    error("@convertible cannot be used on parametric types. "
-                        * "Use it on an alias without free parameters instead.")
-                else
-                    typ = typ.args[1]
-                end
-            end
-        elseif ex.head == :const
-            typ = ex.args[1].args[1]
-        else
-            wrongex = true
-        end
-    else
-        wrongex = true
+    if !isa(ex, Expr) || (isa(ex, Expr) && !(ex.head in (:type, :const)))
+        error("@convertible must be used on a type or alias definition.")
     end
-    wrongex && error("@convertible must be used on a type definition.")
+    if ex.head == :type
+        typ = ex.args[2]
+        if isa(typ, Expr)
+            if typ.head == :curly
+                error("@convertible cannot be used on parametric types. "
+                    * "Use it on an alias without free parameters instead.")
+            else
+                typ = typ.args[1]
+            end
+        end
+    elseif ex.head == :const
+        typ = ex.args[1].args[1]
+    end
 
     return quote
         $(esc(ex))
@@ -86,18 +81,19 @@ _convert{T,S}(::Type{T}, obj::S) = _convert(T, obj, Val{isconvertible(T)}, Val{i
 _convert{T}(::Type{T}, obj, ::Type{Val{true}}, ::Type{Val{true}}) = __convert(T, obj)
 _convert{T}(::Type{T}, obj, ::Type{Val{false}}, ::Type{Val{false}}) = convert(T, obj)
 
-function graph()
-    g = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
+function getgraph()
+    graph = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
     for (ti, tj) in product(nodes, nodes)
         ti == tj && continue
 
         m = methods(convert, (Type{tj}, ti))
-        # Dirty hack to determine if the method isn't the generic fallback
-        if !isempty(m) && m.ms[1].module != Convertible
-            push!(g[ti], tj)
+        isempty(m) && continue
+
+        if function_module(convert, (Type{tj}, ti)) != Convertible
+            push!(graph[ti], tj)
         end
     end
-    return g
+    return graph
 end
 
 function haspath(graph, origin, target)
@@ -109,10 +105,10 @@ function haspath(graph, origin, target)
         if node == target
             break
         end
-        for n in graph[node]
-            if !haskey(links, n)
-                push!(queue, n)
-                merge!(links, Dict{DataType, DataType}(n=>node))
+        for neighbour in graph[node]
+            if !haskey(links, neighbour)
+                push!(queue, neighbour)
+                merge!(links, Dict{DataType, DataType}(neighbour=>node))
             end
         end
     end
@@ -123,17 +119,17 @@ function haspath(graph, origin, target)
 end
 
 function findpath(origin, target)
-    g = graph()
-    if isempty(g[origin])
+    graph = getgraph()
+    if isempty(graph[origin])
         error("There are no convert methods with source type '$origin' defined.")
     end
-    if !haspath(g, origin, target)
+    if !haspath(graph, origin, target)
         error("No conversion path '$origin' -> '$target' found.")
     end
     queue = PriorityQueue(DataType, Int)
     prev = Dict{DataType,Nullable{DataType}}()
     distance = Dict{DataType, Int}()
-    for node in keys(g)
+    for node in keys(graph)
         merge!(prev, Dict(node=>Nullable{DataType}()))
         merge!(distance, Dict(node=>typemax(Int)))
         enqueue!(queue, node, distance[node])
@@ -143,20 +139,20 @@ function findpath(origin, target)
     while !isempty(queue)
         node = dequeue!(queue)
         node == target && break
-        for neighbor in g[node]
+        for neighbour in graph[node]
             alt = distance[node] + 1
-            if alt < distance[neighbor]
-                distance[neighbor] = alt
-                prev[neighbor] = Nullable(node)
-                queue[neighbor] = alt
+            if alt < distance[neighbour]
+                distance[neighbour] = alt
+                prev[neighbour] = Nullable(node)
+                queue[neighbour] = alt
             end
         end
     end
     path = DataType[]
-    n = target
-    while !isnull(prev[n])
-        unshift!(path, n)
-        n = get(prev[n])
+    current = target
+    while !isnull(prev[current])
+        unshift!(path, current)
+        current = get(prev[current])
     end
     return path
 end

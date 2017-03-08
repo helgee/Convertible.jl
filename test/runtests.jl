@@ -46,7 +46,7 @@ convert(::Type{FooBar}, ::Bar) = FooBar()
     @test macroexpand(:(@convertible type Foo{T} end)).head == :error
     @test macroexpand(:(@convertible f(x) = x)).head == :error
 
-    g = Convertible.graph()
+    g = Convertible.getgraph()
     @test g[A] == Set([B, D])
     @test g[B] == Set([C])
     @test isempty(g[D])

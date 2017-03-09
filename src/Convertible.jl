@@ -1,7 +1,6 @@
 module Convertible
 
 import Base: convert, function_module
-import Iterators: product
 import DataStructures: PriorityQueue, enqueue!, unshift!, dequeue!
 
 export @convertible, @convert, isconvertible
@@ -83,14 +82,16 @@ _convert{T}(::Type{T}, obj, ::Type{Val{false}}, ::Type{Val{false}}) = convert(T,
 
 function getgraph()
     graph = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
-    for (ti, tj) in product(nodes, nodes)
-        ti == tj && continue
+    for ti in nodes
+        for tj in nodes
+            ti == tj && continue
 
-        m = methods(convert, (Type{tj}, ti))
-        isempty(m) && continue
+            m = methods(convert, (Type{tj}, ti))
+            isempty(m) && continue
 
-        if function_module(convert, (Type{tj}, ti)) != Convertible
-            push!(graph[ti], tj)
+            if function_module(convert, (Type{tj}, ti)) != Convertible
+                push!(graph[ti], tj)
+            end
         end
     end
     return graph

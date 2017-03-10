@@ -1,11 +1,11 @@
 module Convertible
 
+__precompile__()
+
 import Base: convert, function_module
 import DataStructures: PriorityQueue, enqueue!, unshift!, dequeue!
 
 export @convertible, @convert, isconvertible
-
-const nodes = Set{DataType}()
 
 """
     @convertible
@@ -33,7 +33,6 @@ macro convertible(ex)
     return quote
         $(esc(ex))
         Convertible.isconvertible(::Type{$(esc(typ))}) = true
-        push!(Convertible.nodes, $(esc(typ)))
         nothing
     end
 end
@@ -81,13 +80,18 @@ _convert{T}(::Type{T}, obj, ::Type{Val{true}}, ::Type{Val{true}}) = __convert(T,
 _convert{T}(::Type{T}, obj, ::Type{Val{false}}, ::Type{Val{false}}) = convert(T, obj)
 
 function getgraph()
+    nodes = []
+    for m in methods(isconvertible)
+        m.module == Convertible && continue
+
+        push!(nodes, m.sig.parameters[2].parameters[1])
+    end
     graph = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
     for ti in nodes
         for tj in nodes
             ti == tj && continue
 
-            m = methods(convert, (Type{tj}, ti))
-            isempty(m) && continue
+            isempty(methods(convert, (Type{tj}, ti))) && continue
 
             if function_module(convert, (Type{tj}, ti)) != Convertible
                 push!(graph[ti], tj)

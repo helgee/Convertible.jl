@@ -53,14 +53,14 @@ convert(::Type{FooBar}, ::Bar) = FooBar()
     @test g[E] == Set([F])
 
     # Node without outbound edges
-    @test_throws ErrorException Convertible.findpath(D, B)
+    @test_throws ErrorException Convertible.findpath(g, D, B)
     # Disconnected regions
-    @test_throws ErrorException Convertible.findpath(A, F)
+    @test_throws ErrorException Convertible.findpath(g, A, F)
 
-    @test Convertible.findpath(A, C) == [B, C]
-    @test Convertible.findpath(A, D) == [D]
-    @test Convertible.findpath(B, A) == [C, A]
-    @test Convertible.findpath(B, D) == [C, A, D]
+    @test Convertible.findpath(g, A, C) == [B, C]
+    @test Convertible.findpath(g, A, D) == [D]
+    @test Convertible.findpath(g, B, A) == [C, A]
+    @test Convertible.findpath(g, B, D) == [C, A, D]
 
     a = A(1)
     b = B(1)

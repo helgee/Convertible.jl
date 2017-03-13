@@ -123,8 +123,7 @@ function haspath(graph, origin, target)
     return haspath
 end
 
-function findpath(origin, target)
-    graph = getgraph()
+function findpath(graph, origin, target)
     if isempty(graph[origin])
         error("There are no convert methods with source type '$origin' defined.")
     end
@@ -164,7 +163,8 @@ end
 
 function gen_convert(T, S, obj)
     ex = :(obj)
-    path = findpath(S, T)
+    graph = getgraph()
+    path = findpath(graph, S, T)
     for t in path
         ex = :(convert($t, $ex))
     end

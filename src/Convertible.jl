@@ -1,6 +1,6 @@
-module Convertible
-
 __precompile__()
+
+module Convertible
 
 import Base: convert, function_module
 import DataStructures: PriorityQueue, enqueue!, unshift!, dequeue!

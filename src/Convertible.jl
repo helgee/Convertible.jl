@@ -130,7 +130,7 @@ function findpath(graph, origin, target)
     if !haspath(graph, origin, target)
         error("No conversion path '$origin' -> '$target' found.")
     end
-    queue = PriorityQueue(DataType, Int)
+    queue = PriorityQueue{DataType, Int}()
     prev = Dict{DataType,Nullable{DataType}}()
     distance = Dict{DataType, Int}()
     for node in keys(graph)

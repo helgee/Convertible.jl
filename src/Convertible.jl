@@ -2,177 +2,109 @@ __precompile__()
 
 module Convertible
 
-import Base: convert, function_module
-import DataStructures: PriorityQueue, enqueue!, unshift!, dequeue!
+using ItemGraphs
+using MacroTools
 
-export @convertible, @convert, isconvertible
+import Base: ∘
 
-"""
-    @convertible
+export @convertible, @convert, Converter
 
-`@convertible <type-def>` adds the `isconvertible` trait to the (struct) type defined in `<type-def>`.
-"""
-macro convertible(ex)
-    if !isa(ex, Expr) || (isa(ex, Expr) && !(ex.head in (:type, :const)))
-        error("@convertible must be used on a type or alias definition.")
+const registry = ItemGraph{Any}();
+
+abstract type AbstractConverter end
+abstract type Converter{From,To} <: AbstractConverter end
+
+origin(::Converter{From,To}) where {From,To} = From
+target(::Converter{From,To}) where {From,To} = To
+
+struct ComposedConverter{C1<:AbstractConverter,C2<:AbstractConverter} <: AbstractConverter
+    conv1::C1
+    conv2::C2
+end
+
+(conv::ComposedConverter)(args...) = conv.conv2(conv.conv1(args...))
+
+origin(conv::ComposedConverter) = origin(conv.conv1)
+target(conv::ComposedConverter) = target(conv.conv2)
+
+function ∘(conv1::Converter{From,Via}, conv2::Converter{Via,To}) where {From,Via,To}
+    ComposedConverter(conv1, conv2)
+end
+
+function ∘(conv1::Converter{From,Via1}, conv2::Converter{Via2,To}) where {From,Via1,Via2,To}
+    throw(ArgumentError("The output type of the first converter is '$Via1' while the input type of the
+            second converter is '$Via2'. These must match."))
+end
+
+function (::Type{T})(from, to, args...) where {T<:Converter}
+    path = getpath(registry, from, to)
+    _converter(T, args, path...)
+end
+
+@generated function _converter(T, args, path...)
+    ex = :($T.parameters[1]($(path[1])(), $(path[2])(), args...))
+    for i in eachindex(path[2:end-1])
+        t1 = path[i+1]
+        t2 = path[i+2]
+        ex = :(ComposedConverter($ex, $T.parameters[1]($t1(), $t2(), args...)))
     end
-    if ex.head == :type
-        typ = ex.args[2]
-        if isa(typ, Expr)
-            if typ.head == :curly
-                error("@convertible cannot be used on parametric types. "
-                    * "Use it on an alias without free parameters instead.")
-            else
-                typ = typ.args[1]
-            end
+    ex
+end
+
+isconvertible(::Type{T}) where {T} = false
+
+function _convert(::Type{T}, obj::S, ::Type{Val{true}}) where {T,S}
+    path = getpath(registry, S, T)
+    __convert(obj, path[2:end]...)
+end
+
+function _convert(::Type{T}, obj::S, ::Type{Val{false}}) where {T,S}
+    throw(ArgumentError("Input type '$S' is not convertible."))
+end
+
+@generated function __convert(obj, path...)
+    ex = :(obj)
+    for p in path
+        ex = :($p.parameters[1]($ex))
+    end
+    ex
+end
+
+macro convert(expr::Expr)
+    def = splitdef(expr)
+    name = def[:name]
+    args = def[:args]
+    if length(args) == 1
+        length(args) != 1 && throw(ArgumentError("Constructor must have a single argument."))
+        _, origin, _ = splitarg(args[1])
+        return quote
+            add_edge!(registry, $(esc(origin)), $(esc(name)))
+            $(esc(expr))
         end
-    elseif ex.head == :const
-        typ = ex.args[1].args[1]
+    elseif length(args) >= 2
+        _, origin, _ = splitarg(args[1])
+        _, target, _ = splitarg(args[2])
+        return quote
+            if !($(esc(name)) <: Converter)
+                name = string($(esc(name)))
+                throw(ArgumentError("'$name' is not a subtype of 'Converter'."))
+            end
+            add_edge!(registry, $(esc(origin))(), $(esc(target))())
+            $(esc(expr))
+        end
+    else
+        throw(ArgumentError("@convert must be used on single-argument or converter constructor."))
     end
+end
 
+macro convertible(expr::Expr)
+    @capture(expr, struct T_ fields__ end) || throw(ArgumentError("Expected a struct definition."))
     return quote
-        $(esc(ex))
-        Convertible.isconvertible(::Type{$(esc(typ))}) = true
+        $expr
+        Convertible.isconvertible(::Type{$(esc(T))}) = true
+        $(esc(T))(obj::S) where {S} = _convert($(esc(T)), obj, Val{isconvertible(S)})
         nothing
     end
-end
-
-"""
-    @convert
-
-`@convert <expr>` enables multi-step conversion for all calls to `convert` in `<expr>`.
-"""
-macro convert(ex)
-    recursive_replace!(ex, :(Base.convert), :(Convertible._convert))
-    recursive_replace!(ex, :convert, :(Convertible._convert))
-    :($(esc(ex)))
-end
-
-function recursive_replace!(ex, old::Expr, new)
-    if isa(ex, Expr) && !isempty(ex.args)
-        for (i, expr) in enumerate(ex.args)
-            if (isa(expr, Expr) && expr.head == :.
-                && Symbol(expr.args) == Symbol(old.args))
-                ex.args[i] = new
-            else
-                recursive_replace!(ex.args[i], old, new)
-            end
-        end
-    end
-end
-
-function recursive_replace!(ex, old::Symbol, new)
-    if isa(ex, Expr) && !isempty(ex.args)
-        for (i, expr) in enumerate(ex.args)
-            if isa(expr, Symbol) && expr == old
-                ex.args[i] = new
-            else
-                recursive_replace!(ex.args[i], old, new)
-            end
-        end
-    end
-end
-
-isconvertible{T}(::Type{T}) = false
-
-_convert{T,S}(::Type{T}, obj::S) = _convert(T, obj, Val{isconvertible(T)}, Val{isconvertible(S)})
-_convert{T}(::Type{T}, obj, ::Type{Val{true}}, ::Type{Val{true}}) = __convert(T, obj)
-_convert{T}(::Type{T}, obj, ::Type{Val{false}}, ::Type{Val{false}}) = convert(T, obj)
-
-function getgraph()
-    nodes = []
-    for m in methods(isconvertible)
-        m.module == Convertible && continue
-
-        push!(nodes, m.sig.parameters[2].parameters[1])
-    end
-    graph = Dict{DataType,Set{DataType}}(t => Set{DataType}() for t in nodes)
-    for ti in nodes
-        for tj in nodes
-            ti == tj && continue
-
-            isempty(methods(convert, (Type{tj}, ti))) && continue
-
-            if function_module(convert, (Type{tj}, ti)) != Convertible
-                push!(graph[ti], tj)
-            end
-        end
-    end
-    return graph
-end
-
-function haspath(graph, origin, target)
-    haspath = false
-    queue = [origin]
-    links = Dict{DataType, DataType}()
-    while !isempty(queue)
-        node = shift!(queue)
-        if node == target
-            break
-        end
-        for neighbour in graph[node]
-            if !haskey(links, neighbour)
-                push!(queue, neighbour)
-                merge!(links, Dict{DataType, DataType}(neighbour=>node))
-            end
-        end
-    end
-    if haskey(links, target)
-        haspath = true
-    end
-    return haspath
-end
-
-function findpath(graph, origin, target)
-    if isempty(graph[origin])
-        error("There are no convert methods with source type '$origin' defined.")
-    end
-    if !haspath(graph, origin, target)
-        error("No conversion path '$origin' -> '$target' found.")
-    end
-    queue = PriorityQueue{DataType, Int}()
-    prev = Dict{DataType,Nullable{DataType}}()
-    distance = Dict{DataType, Int}()
-    for node in keys(graph)
-        merge!(prev, Dict(node=>Nullable{DataType}()))
-        merge!(distance, Dict(node=>typemax(Int)))
-        enqueue!(queue, node, distance[node])
-    end
-    distance[origin] = 0
-    queue[origin] = 0
-    while !isempty(queue)
-        node = dequeue!(queue)
-        node == target && break
-        for neighbour in graph[node]
-            alt = distance[node] + 1
-            if alt < distance[neighbour]
-                distance[neighbour] = alt
-                prev[neighbour] = Nullable(node)
-                queue[neighbour] = alt
-            end
-        end
-    end
-    path = DataType[]
-    current = target
-    while !isnull(prev[current])
-        unshift!(path, current)
-        current = get(prev[current])
-    end
-    return path
-end
-
-function gen_convert(T, S, obj)
-    ex = :(obj)
-    graph = getgraph()
-    path = findpath(graph, S, T)
-    for t in path
-        ex = :(convert($t, $ex))
-    end
-    return :($ex)
-end
-
-@generated function __convert{T,S}(::Type{T}, obj::S)
-    gen_convert(T, S, obj)
 end
 
 end # module

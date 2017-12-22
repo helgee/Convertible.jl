@@ -51,18 +51,12 @@ end
     ex
 end
 
-isconvertible(::Type{T}) where {T} = false
-
-function _convert(::Type{T}, obj::S, ::Type{Val{true}}) where {T,S}
+function _convert(::Type{T}, obj::S) where {T,S}
     path = getpath(registry, S, T)
-    __convert(obj, path[2:end]...)
+    _convert(obj, path[2:end]...)
 end
 
-function _convert(::Type{T}, obj::S, ::Type{Val{false}}) where {T,S}
-    throw(ArgumentError("Input type '$S' is not convertible."))
-end
-
-@generated function __convert(obj, path...)
+@generated function _convert(obj, path...)
     ex = :(obj)
     for p in path
         ex = :($p.parameters[1]($ex))
@@ -93,7 +87,7 @@ macro convert(expr::Expr)
             $(esc(expr))
         end
     else
-        throw(ArgumentError("@convert must be used on single-argument or converter constructor."))
+        throw(ArgumentError("@convert must be used on a single-argument or Converter constructor."))
     end
 end
 
@@ -101,8 +95,7 @@ macro convertible(expr::Expr)
     @capture(expr, struct T_ fields__ end) || throw(ArgumentError("Expected a struct definition."))
     return quote
         $expr
-        Convertible.isconvertible(::Type{$(esc(T))}) = true
-        $(esc(T))(obj::S) where {S} = _convert($(esc(T)), obj, Val{isconvertible(S)})
+        $(esc(T))(obj::S) where {S} = _convert($(esc(T)), obj)
         nothing
     end
 end
